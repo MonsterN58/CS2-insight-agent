@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Check,
   ChevronLeft,
+  Download,
   Gamepad2,
   Gem,
   Info,
@@ -37,8 +38,6 @@ import {
   workshopSchemeSelectionForItem,
 } from "../../cosmetics-workshop/workshopSchemeStorage.js";
 
-const SKIN_CORE_FORCED_CUSTOM_NAME = "CS2 INSIGHT AGENT";
-
 function sameCosmeticIdentity(item, replacement) {
   if (!item || !replacement) return false;
   const itemType = String(item?.type || "");
@@ -54,14 +53,16 @@ function sameCosmeticIdentity(item, replacement) {
   return catalogMatches || definitionMatches;
 }
 
-function originalCustomName(item, snapshot, replacement = null) {
+function originalCustomName(item, snapshot, _replacement = null) {
   if (!snapshot) return typeof item?.custom_name === "string" ? item.custom_name : "";
   if (Object.prototype.hasOwnProperty.call(snapshot, "custom_name")) {
     return typeof snapshot.custom_name === "string" ? snapshot.custom_name : "";
   }
   const current = typeof item?.custom_name === "string" ? item.custom_name : "";
-  const isAppliedCoreMarker = current.trim().toUpperCase() === SKIN_CORE_FORCED_CUSTOM_NAME
-    && sameCosmeticIdentity(item, replacement);
+  const isAppliedCoreMarker = (
+    current.trim().toUpperCase() === "CS2 INSIGHT AGENT" ||
+    current.trim().toUpperCase() === "CS2-INSIGHT-AGENT"
+  );
   return isAppliedCoreMarker ? "" : current;
 }
 
@@ -141,7 +142,7 @@ function cosmeticPreview(item, replacement) {
     // Replaced skins do not keep the original weapon's stickers.
     // Restoring the original keeps demo sticker evidence.
     stickers: replacement.restore ? (item?.stickers || []) : [],
-    custom_name: item?.custom_name,
+    custom_name: replacement.custom_name !== undefined ? replacement.custom_name : (item?.custom_name || ""),
     image_url: replacement.image_url || item?.image_url,
     rarity: replacement.rarity || item?.rarity,
     paint_wear: Number.isFinite(Number(replacement.paint_wear))
@@ -1040,6 +1041,7 @@ export default function CosmeticsView({ workspace, selectedPlayer, locale = "zh"
   const [pickerItem, setPickerItem] = useState(null);
   const [pickerTeam, setPickerTeam] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [exportingDemo, setExportingDemo] = useState(false);
   const [saveResult, setSaveResult] = useState(null);
   const [schemePickerOpen, setSchemePickerOpen] = useState(false);
   const [workshopSchemes, setWorkshopSchemes] = useState([]);
@@ -1090,6 +1092,7 @@ export default function CosmeticsView({ workspace, selectedPlayer, locale = "zh"
     setPickerItem(null);
     setPickerTeam(null);
     setSaving(false);
+    setExportingDemo(false);
     setSaveResult(null);
     setSchemePickerOpen(false);
     setWorkshopSchemes([]);
@@ -1225,6 +1228,46 @@ export default function CosmeticsView({ workspace, selectedPlayer, locale = "zh"
     setOriginalBySlot({ ...savedOriginals });
     clearOverlays();
     setViewMode("browse");
+  };
+
+  const handleExportDemo = async () => {
+    if (!demoId || exportingDemo) return;
+    setExportingDemo(true);
+    try {
+      const response = await fetch(`/api/demos/${encodeURIComponent(demoId)}/export-demo`);
+      if (!response.ok) {
+        let errMessage = `HTTP ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData?.detail) errMessage = errData.detail;
+        } catch {
+          // ignore
+        }
+        throw new Error(errMessage);
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      let filename = `modified_${demoId}.dem`;
+      if (disposition && disposition.includes("filename=")) {
+        const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1]);
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setNotice({ tone: "success", text: t("analysis.cosmetics.exportDemoSuccess") });
+    } catch (err) {
+      setNotice({ tone: "error", text: err?.message || t("common.failed") });
+    } finally {
+      setExportingDemo(false);
+    }
   };
 
   const confirmReplacement = (replacement) => {
@@ -1392,6 +1435,23 @@ export default function CosmeticsView({ workspace, selectedPlayer, locale = "zh"
           <p className="mt-1 text-[10px] text-cs2-text-muted">{t("analysis.cosmetics.ownershipHint")} · {t("analysis.cosmetics.interactionHint")}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {demoId ? (
+            <button
+              type="button"
+              data-testid="cosmetics-export-demo"
+              disabled={exportingDemo || saving}
+              onClick={handleExportDemo}
+              className="group inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-cs2-border bg-cs2-bg-input px-3 text-[10px] font-bold text-cs2-text-secondary transition-colors hover:border-cs2-text-muted hover:bg-cs2-bg-hover hover:text-cs2-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              title={t("analysis.cosmetics.exportDemo")}
+            >
+              {exportingDemo ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5 text-cs2-text-muted transition-colors group-hover:text-cs2-text-primary" />
+              )}
+              {t("analysis.cosmetics.exportDemo")}
+            </button>
+          ) : null}
           {browseMode ? (
             <button
               type="button"

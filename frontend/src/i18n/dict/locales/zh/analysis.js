@@ -66,7 +66,12 @@ export default {
   "analysis.cosmetics.picker.cancel": "取消",
   "analysis.cosmetics.picker.confirm": "确认",
   "analysis.cosmetics.picker.wearInvalid": "该饰品磨损需在 {min}–{max} 之间",
-  "analysis.cosmetics.picker.seedInvalid": "模板需为 0–1000 的整数",
+    "analysis.cosmetics.picker.seedInvalid": "模板需为 0–1000 的整数",
+  "analysis.cosmetics.picker.customName": "改名标签",
+  "analysis.cosmetics.picker.customNameHint": "留空显示本名",
+  "analysis.cosmetics.picker.customNamePlaceholder": "输入改名标签（留空显示原名）",
+  "analysis.cosmetics.exportDemo": "导出修改后的Demo",
+  "analysis.cosmetics.exportDemoSuccess": "Demo导出已开始",
   "analysis.cosmetics.saveSuccess": "自定义皮肤方案已保存",
   "analysis.cosmetics.savePartial": "部分饰品已保存，其余未写入",
   "analysis.cosmetics.saveFailed": "保存自定义方案失败",
@@ -380,3 +385,5 @@ export default {
   "weaponKills.queueSummary": "{weapon} · {n} 次击杀",
   "weaponKills.contextCount": "{n} 次击杀",
 };
+
+

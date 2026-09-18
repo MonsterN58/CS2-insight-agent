@@ -1,7 +1,7 @@
 import asyncio
 
-from backend.app.recording.executor import recording_executor as executor_module
-from backend.app.recording.models import (
+from app.recording.executor import recording_executor as executor_module
+from app.recording.models import (
     DemoContext,
     Perspective,
     RecordingRequestDTO,
@@ -12,7 +12,7 @@ from backend.app.recording.models import (
     SourceType,
     TargetPlayer,
 )
-from backend.app.recording.plan_builder import build_plan
+from app.recording.plan_builder import build_plan
 
 
 TICK_RATE = 64.0

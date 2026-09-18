@@ -714,7 +714,9 @@ def detect_ffmpeg_path() -> Optional[str]:
 
 
 _OBS64_REL = Path("bin") / "64bit" / "obs64.exe"
+_REPO_ROOT_FOR_OBS = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_OBS_PATHS: tuple[str, ...] = (
+    str(_REPO_ROOT_FOR_OBS / "third_party" / "obs-studio" / "bin" / "64bit" / "obs64.exe"),
     r"C:\Program Files\obs-studio\bin\64bit\obs64.exe",
     r"C:\Program Files (x86)\obs-studio\bin\64bit\obs64.exe",
 )

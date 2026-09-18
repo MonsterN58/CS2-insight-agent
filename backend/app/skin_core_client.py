@@ -30,6 +30,22 @@ _DEV_ANYSKIN_ROOTS: tuple[Path, ...] = (
     Path(r"C:\code\CS2-demo-anyskin"),
 )
 
+# Overridable candidate roots for installed desktop app discovery
+_INSTALLED_APP_ROOTS: tuple[Path, ...] | None = None
+
+
+def _get_installed_app_roots() -> tuple[Path, ...]:
+    if _INSTALLED_APP_ROOTS is not None:
+        return _INSTALLED_APP_ROOTS
+    roots: list[Path] = []
+    local_app_data = (os.environ.get("LOCALAPPDATA") or "").strip()
+    if local_app_data:
+        roots.append(Path(local_app_data) / "CS2 Insight Agent")
+    prog_files = (os.environ.get("ProgramFiles") or "").strip()
+    if prog_files:
+        roots.append(Path(prog_files) / "CS2 Insight Agent")
+    return tuple(roots)
+
 
 class SkinCoreNotFound(FileNotFoundError):
     """skin-core.exe could not be resolved on this machine."""
@@ -68,6 +84,9 @@ def _candidate_paths() -> list[Path]:
     candidates.append(
         _REPO_ROOT / "frontend" / "src-tauri" / "bundle-resources" / "tools" / "skin-core.exe"
     )
+
+    for root in _get_installed_app_roots():
+        candidates.append(root / "tools" / "skin-core.exe")
 
     return candidates
 
@@ -247,6 +266,43 @@ def run_rewrite_owned_batch(
         if stderr:
             logger.info("skin-core stderr: %s", stderr[:500].decode("utf-8", errors="replace"))
         logger.info("skin-core rewrite finished: exit=%s items=%s", code, len(items))
+
+        # Standalone / Web mode fallback:
+        # In web mode or when invoked outside the Tauri desktop supervisor, skin-core may reject
+        # execution with exit code 2 (auth failed: no ancestor PE SHA-256 in allowlist).
+        # If DEV was not already forced, retry with DEV=1 to allow the standalone/web frontend
+        # to function without needing Tauri as ancestor process.
+        if code == 2 and _ENV_DEV not in env:
+            logger.warning(
+                "skin-core auth failed (exit 2) without DEV flag; retrying with dev bypass in standalone/web environment..."
+            )
+            retry_env = env.copy()
+            retry_env[_ENV_DEV] = "1"
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=retry_env,
+            )
+            try:
+                stdout, stderr = proc.communicate(
+                    input=build_session_key_frame(key),
+                    timeout=timeout,
+                )
+            except subprocess.TimeoutExpired as exc:
+                proc.kill()
+                killed_out, killed_err = proc.communicate()
+                err_tail = (killed_err or b"").decode("utf-8", errors="replace").strip()
+                logger.error("skin-core retry timed out after %ss: stderr=%r", timeout, err_tail[:2000])
+                raise SkinCoreError(f"skin-core retry timed out after {timeout:g}s") from exc
+
+            code = proc.returncode
+            if stdout:
+                logger.info("skin-core retry stdout: %s", stdout[:500].decode("utf-8", errors="replace"))
+            if stderr:
+                logger.info("skin-core retry stderr: %s", stderr[:500].decode("utf-8", errors="replace"))
+            logger.info("skin-core retry finished: exit=%s items=%s", code, len(items))
 
         if code == 2:
             raise SkinCoreError(

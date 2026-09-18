@@ -248,7 +248,17 @@ export default function DemoLibraryPage() {
   );
 
   const handleOpenLocalDemo = useCallback(async () => {
-    const paths = await desktopBridge?.chooseDemoFiles?.();
+    let paths = [];
+    if (desktopBridge?.chooseDemoFiles) {
+      paths = await desktopBridge.chooseDemoFiles();
+    } else {
+      try {
+        const { data } = await API.post("file-picker", { file_type: "demo", multiple: true });
+        paths = data?.paths || (data?.path ? [data.path] : []);
+      } catch (err) {
+        console.error("Failed to pick demo files:", err);
+      }
+    }
     if (paths?.length) await s.handleUpload(paths);
   }, [s]);
 

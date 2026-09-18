@@ -233,3 +233,40 @@ test("replacement seed must be an integer between 0 and 1000", () => {
   expect(onConfirm).toHaveBeenCalledTimes(1);
   expect(onConfirm.mock.calls[0][0].paint_seed).toBe(999);
 });
+
+test("supports custom name input and passes custom_name to onConfirm", () => {
+    const onConfirm = vi.fn();
+    render(
+      <SkinReplacementPicker
+        open
+        locale="zh"
+        onlineAssetsEnabled={false}
+        sourceItem={{
+          type: "weapon",
+          def_index: 7,
+          model: "ak47",
+          name_zh: "AK-47 | 红线",
+          name_en: "AK-47 | Redline",
+          paint_wear: 0.25,
+          paint_seed: 412,
+          image_url: "",
+        }}
+        onClose={() => {}}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const candidates = screen.getByTestId("skin-candidate-list");
+    fireEvent.click(within(candidates).getAllByRole("button")[0]);
+
+    const customNameInput = screen.getByTestId("skin-custom-name-input");
+    expect(customNameInput).toBeTruthy();
+    expect(customNameInput.value).toBe("");
+
+    fireEvent.change(customNameInput, { target: { value: "Dragon King" } });
+    expect(customNameInput.value).toBe("Dragon King");
+
+    fireEvent.click(screen.getByRole("button", { name: /确定|Confirm/i }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm.mock.calls[0][0].custom_name).toBe("Dragon King");
+  });

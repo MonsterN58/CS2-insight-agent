@@ -30,11 +30,12 @@ def prepare_desktop_exit(instance_id: str = Query(...)):
 
 
 class FilePickerBody(BaseModel):
-    file_type: str = Field(default="any", pattern=r"^(audio|video_or_image|lite_cut_asset|exe|any)$")
+    file_type: str = Field(default="any", pattern=r"^(audio|video_or_image|lite_cut_asset|exe|demo|any)$")
     multiple: bool = False
 
 
 _FILE_PICKER_FILTERS: dict[str, str] = {
+    "demo": "CS2 Demo 文件 (*.dem)|*.dem|所有文件|*.*",
     "audio": "音频文件|*.mp3;*.ogg;*.wav;*.flac;*.aac;*.m4a|所有文件|*.*",
     "video_or_image": "视频与图片|*.mp4;*.mov;*.mkv;*.avi;*.png;*.jpg;*.jpeg;*.webp;*.bmp;*.gif|所有文件|*.*",
     "lite_cut_asset": (

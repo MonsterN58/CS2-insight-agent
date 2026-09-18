@@ -397,7 +397,10 @@ def _decode_paint_wear(value: object) -> float | None:
 
 def _custom_name(value: object) -> str:
     text = str(value or "")
-    return "" if text.strip().lower() in {"", "nan", "nat", "none", "null"} else text
+    stripped = text.strip()
+    if stripped.lower() in {"", "nan", "nat", "none", "null"} or stripped.upper() in {"CS2 INSIGHT AGENT", "CS2-INSIGHT-AGENT"}:
+        return ""
+    return text
 
 
 def _row_value(row: Mapping[str, Any], *names: str) -> object:

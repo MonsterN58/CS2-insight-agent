@@ -66,7 +66,12 @@ export default {
   "analysis.cosmetics.picker.cancel": "Cancel",
   "analysis.cosmetics.picker.confirm": "Confirm",
   "analysis.cosmetics.picker.wearInvalid": "Wear must be between {min} and {max} for this finish",
-  "analysis.cosmetics.picker.seedInvalid": "Seed must be an integer from 0 to 1000",
+    "analysis.cosmetics.picker.seedInvalid": "Seed must be an integer from 0 to 1000",
+  "analysis.cosmetics.picker.customName": "Nametag",
+  "analysis.cosmetics.picker.customNameHint": "Leave empty for original name",
+  "analysis.cosmetics.picker.customNamePlaceholder": "Custom name (empty for original name)",
+  "analysis.cosmetics.exportDemo": "Export Modified Demo",
+  "analysis.cosmetics.exportDemoSuccess": "Demo download started",
   "analysis.cosmetics.saveSuccess": "Custom skin plan saved",
   "analysis.cosmetics.savePartial": "Some skins were saved; others were not written",
   "analysis.cosmetics.saveFailed": "Failed to save custom skin plan",
@@ -380,3 +385,6 @@ export default {
   "weaponKills.queueSummary": "{weapon} · {n} {n, plural, one=kill, other=kills}",
   "weaponKills.contextCount": "{n} {n, plural, one=kill, other=kills}",
 };
+
+
+

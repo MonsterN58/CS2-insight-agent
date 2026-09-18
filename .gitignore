@@ -125,3 +125,7 @@ backups/
 .worktrees/
 .superpowers/
 
+
+# Local skin rewrite core binary
+/tools/skin-core*.exe
+/tools/skin-core*.bak

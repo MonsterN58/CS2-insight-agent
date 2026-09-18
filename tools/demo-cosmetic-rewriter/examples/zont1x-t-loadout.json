@@ -45,7 +45,7 @@
           "model_resource_handle": "13478092056631755737",
           "mapping_source": { "kind": "observed_in_input" }
         },
-        "custom_name": "CS2-INSIGHT-AGENT",
+        "custom_name": "",
         "visual_state": {
           "mesh_group_mask": "18446744073709551615",
           "body_group": 0
@@ -57,3 +57,4 @@
     }
   ]
 }
+

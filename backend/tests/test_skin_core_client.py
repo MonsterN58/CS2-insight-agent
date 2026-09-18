@@ -91,8 +91,22 @@ def test_resolve_raises_when_missing(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.delenv("CS2_INSIGHT_BUNDLE_DATA_DIR", raising=False)
     monkeypatch.setattr("app.skin_core_client._REPO_ROOT", tmp_path / "empty-repo")
     monkeypatch.setattr("app.skin_core_client._DEV_ANYSKIN_ROOTS", ())
+    monkeypatch.setattr("app.skin_core_client._INSTALLED_APP_ROOTS", ())
     with pytest.raises(SkinCoreNotFound):
         resolve_skin_core_exe()
+
+
+def test_resolve_finds_installed_desktop_app_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("CS2_SKIN_CORE_EXE", raising=False)
+    monkeypatch.delenv("CS2_INSIGHT_BUNDLE_DATA_DIR", raising=False)
+    monkeypatch.setattr("app.skin_core_client._REPO_ROOT", tmp_path / "empty-repo")
+    monkeypatch.setattr("app.skin_core_client._DEV_ANYSKIN_ROOTS", ())
+    installed_root = tmp_path / "installed_app"
+    installed_exe = installed_root / "tools" / "skin-core.exe"
+    installed_exe.parent.mkdir(parents=True)
+    installed_exe.write_bytes(b"MZ")
+    monkeypatch.setattr("app.skin_core_client._INSTALLED_APP_ROOTS", (installed_root,))
+    assert resolve_skin_core_exe() == installed_exe.resolve()
 
 
 def test_run_rewrite_pipes_session_key_and_decrypts_response(
@@ -291,6 +305,7 @@ def test_run_raises_skin_core_not_found(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.delenv("CS2_INSIGHT_BUNDLE_DATA_DIR", raising=False)
     monkeypatch.setattr("app.skin_core_client._REPO_ROOT", tmp_path / "empty")
     monkeypatch.setattr("app.skin_core_client._DEV_ANYSKIN_ROOTS", ())
+    monkeypatch.setattr("app.skin_core_client._INSTALLED_APP_ROOTS", ())
     with pytest.raises(SkinCoreNotFound):
         run_rewrite_owned_batch(
             input_dem=str(tmp_path / "in.dem"),
@@ -299,3 +314,68 @@ def test_run_raises_skin_core_not_found(tmp_path: Path, monkeypatch: pytest.Monk
             items=[{"item_id64": "1", "definition_index": 7, "paint_kit": 1, "pattern_seed": 0, "wear": 0.1}],
             demoparser2_python="python",
         )
+
+
+def test_run_rewrite_retries_with_dev_on_auth_failed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    exe = tmp_path / "skin-core.exe"
+    exe.write_bytes(b"MZ")
+    monkeypatch.setenv("CS2_SKIN_CORE_EXE", str(exe))
+    monkeypatch.delenv("CS2_SKIN_CORE_DEV", raising=False)
+    monkeypatch.delenv("CS2_INSIGHT_DEV", raising=False)
+
+    def fake_urandom(n: int) -> bytes:
+        if n == 32:
+            return FIXED_KEY
+        return bytes((i * 17 + 3) % 256 for i in range(n))
+
+    monkeypatch.setattr("app.skin_core_client.os.urandom", fake_urandom)
+    monkeypatch.setattr("app.skin_core_crypto.os.urandom", fake_urandom)
+
+    input_dem = tmp_path / "in.dem"
+    output_dem = tmp_path / "out.dem"
+    input_dem.write_bytes(b"dem")
+    demopy = tmp_path / "python.exe"
+    demopy.write_bytes(b"MZ")
+
+    attempts: list[dict] = []
+
+    def fake_popen(cmd, stdin=None, stdout=None, stderr=None, env=None, **kwargs):
+        attempts.append({"cmd": list(cmd), "env": env})
+        input_arg = cmd[cmd.index("--input") + 1]
+        output_arg = cmd[cmd.index("--output") + 1]
+        response_path = Path(cmd[cmd.index("--response") + 1])
+        proc = MagicMock()
+
+        if len(attempts) == 1:
+            # First attempt: simulate auth failure exit 2 in non-Tauri parent process
+            def communicate(input=None, timeout=None):
+                return (b"", b"auth failed: no ancestor PE SHA-256 in allowlist")
+            proc.communicate = communicate
+            proc.returncode = 2
+        else:
+            # Second attempt: with DEV=1 bypass
+            ok_payload = json.dumps(
+                {"schema_version": 1, "ok": True, "sha256": "abc123", "items_rewritten": 1},
+                separators=(",", ":"),
+            ).encode("utf-8")
+            response_path.write_bytes(_encrypt_response(FIXED_KEY, input_arg, output_arg, ok_payload))
+
+            def communicate(input=None, timeout=None):
+                return (b"", b"")
+            proc.communicate = communicate
+            proc.returncode = 0
+
+        return proc
+
+    monkeypatch.setattr("app.skin_core_client.subprocess.Popen", fake_popen)
+    resp = run_rewrite_owned_batch(
+        input_dem=input_dem,
+        output_dem=output_dem,
+        steam_id64="76561198000000001",
+        items=[{"item_id64": "1", "definition_index": 7, "paint_kit": 1, "pattern_seed": 0, "wear": 0.1}],
+        demoparser2_python=demopy,
+    )
+    assert resp["ok"] is True
+    assert len(attempts) == 2
+    assert "CS2_SKIN_CORE_DEV" not in attempts[0]["env"]
+    assert attempts[1]["env"]["CS2_SKIN_CORE_DEV"] == "1"

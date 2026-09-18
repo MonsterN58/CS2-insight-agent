@@ -80,10 +80,20 @@ export default function DemoWatchPathsModal({
   };
 
   const choosePath = async () => {
-    const selected = await desktopBridge?.chooseDirectory?.(
-      demoWatchPaths[0] || "",
-      t("library.watchPathsPickerTitle")
-    );
+    let selected = "";
+    if (desktopBridge?.chooseDirectory) {
+      selected = await desktopBridge.chooseDirectory(
+        demoWatchPaths[0] || "",
+        t("library.watchPathsPickerTitle")
+      );
+    } else {
+      try {
+        const { data } = await API.post("directory-picker");
+        selected = data?.path ?? "";
+      } catch (err) {
+        console.error("Failed to pick directory:", err);
+      }
+    }
     if (selected) await addPath(selected);
   };
 
@@ -151,7 +161,7 @@ export default function DemoWatchPathsModal({
             <button
               type="button"
               onClick={() => void choosePath()}
-              disabled={!desktopBridge || adding}
+              disabled={adding}
               className="flex w-full items-center justify-center gap-2 rounded-lg border border-cs2-accent/45 bg-cs2-accent/10 px-4 py-3 text-xs font-bold text-cs2-accent hover:bg-cs2-accent/20 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderPlus className="h-4 w-4" />}

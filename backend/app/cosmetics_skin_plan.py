@@ -279,7 +279,11 @@ def _display_fields(row: dict[str, Any]) -> dict[str, Any]:
         "custom_name",
     ):
         if key in row:
-            out[key] = row[key]
+            if key == "custom_name":
+                val = row.get("custom_name")
+                out[key] = str(val).strip() if val is not None else ""
+            else:
+                out[key] = row[key]
     return out
 
 
@@ -423,6 +427,9 @@ def build_batch_and_plan(
             "pattern_seed": pattern_seed,
             "wear": wear,
         }
+        if "custom_name" in repl:
+            raw_cname = repl.get("custom_name")
+            batch_item["custom_name"] = str(raw_cname).strip() if raw_cname is not None else ""
 
         # melee → knife kind awareness: set replacement_definition_index only when
         # knife/glove model changes. Closed v1 may validate-bail on cross-model.

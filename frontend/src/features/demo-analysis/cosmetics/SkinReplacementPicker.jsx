@@ -227,6 +227,9 @@ function SkinColumn({
   onSeedChange,
   wearInvalid,
   seedInvalid,
+  customName,
+  customNameEditable = false,
+  onCustomNameChange,
   wearMin = WEAR_MIN,
   wearMax = WEAR_MAX,
   testId,
@@ -275,6 +278,30 @@ function SkinColumn({
       ) : (
         <ParamValue label={t("analysis.cosmetics.picker.seed")} value={seed} />
       )}
+      {customNameEditable ? (
+        <label className="flex w-full min-w-0 shrink-0 flex-col gap-0.5 text-[11px]">
+          <span className="flex items-center justify-between gap-2 text-cs2-text-muted">
+            <span>{t("analysis.cosmetics.picker.customName") || "改名标签"}</span>
+            <span className="text-[9px] text-cs2-text-muted">
+              {t("analysis.cosmetics.picker.customNameHint") || "留空显示原名"}
+            </span>
+          </span>
+          <input
+            type="text"
+            data-testid="skin-custom-name-input"
+            value={customName || ""}
+            maxLength={32}
+            onChange={(event) => onCustomNameChange?.(event.target.value)}
+            placeholder={t("analysis.cosmetics.picker.customNamePlaceholder") || "输入改名标签（留空显示官方原名）"}
+            className="w-full rounded-[8px] border border-cs2-border bg-cs2-bg-input px-2 py-1 text-[11px] text-cs2-text-primary outline-none focus:border-cs2-accent"
+          />
+        </label>
+      ) : (
+        <ParamValue
+          label={t("analysis.cosmetics.picker.customName") || "改名标签"}
+          value={customName || "—"}
+        />
+      )}
     </div>
   );
 }
@@ -307,6 +334,7 @@ export default function SkinReplacementPicker({
   const [selected, setSelected] = useState(null);
   const [wear, setWear] = useState("");
   const [seed, setSeed] = useState("");
+  const [customName, setCustomName] = useState("");
   const [activeTypeGroup, setActiveTypeGroup] = useState("");
 
   const currentWear = formatWear(sourceItem?.paint_wear) || String(sourceItem?.paint_wear ?? "");
@@ -320,6 +348,7 @@ export default function SkinReplacementPicker({
     setSelected(null);
     setWear(formatWear(WEAR_MIN));
     setSeed(String(SEED_MIN));
+    setCustomName("");
     setActiveTypeGroup(defaultTypeGroup);
   }, [defaultTypeGroup, open, sourceItem]);
 
@@ -347,7 +376,7 @@ export default function SkinReplacementPicker({
   };
 
   const replacementPreview = selected
-    ? { ...selected, paint_wear: Number(wear), paint_seed: Number(seed) }
+    ? { ...selected, paint_wear: Number(wear), paint_seed: Number(seed), custom_name: customName.trim() }
     : null;
 
   const wearValid = isValidWear(wear, selectedWearBounds.min, selectedWearBounds.max);
@@ -374,6 +403,7 @@ export default function SkinReplacementPicker({
       wear_max: selectedWearBounds.max,
       paint_wear: Number(wear),
       paint_seed: parseSeed(seed),
+      custom_name: customName.trim(),
     });
   };
 
@@ -419,8 +449,10 @@ export default function SkinReplacementPicker({
             testId="skin-picker-current"
             wear={currentWear}
             seed={currentSeed}
+            customName={sourceItem?.custom_name}
             wearEditable={false}
             seedEditable={false}
+            customNameEditable={false}
           />
           <SkinColumn
             item={replacementPreview}
@@ -430,10 +462,13 @@ export default function SkinReplacementPicker({
             testId="skin-picker-replacement"
             wear={wear}
             seed={seed}
+            customName={customName}
             wearEditable
             seedEditable
+            customNameEditable
             onWearChange={setWear}
             onSeedChange={setSeed}
+            onCustomNameChange={setCustomName}
             wearInvalid={wearValid ? null : t("analysis.cosmetics.picker.wearInvalid", {
               min: formatWear(selectedWearBounds.min),
               max: formatWear(selectedWearBounds.max),
@@ -550,3 +585,4 @@ export default function SkinReplacementPicker({
     </Modal>
   );
 }
+

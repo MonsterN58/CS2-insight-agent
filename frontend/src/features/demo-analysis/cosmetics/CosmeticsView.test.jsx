@@ -1763,4 +1763,68 @@ describe("CosmeticsView", () => {
     expect(within(screen.getByTestId("cosmetics-row-ct")).getByText(/★ CT 刀/)).toBeTruthy();
     expect(screen.getByTestId("cosmetics-row-t")).toBeTruthy();
   });
+
+  test("renders export demo button and triggers download", async () => {
+    const mockBlob = new Blob(["DEMO-DATA"], { type: "application/octet-stream" });
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: {
+        get: (h) => (h.toLowerCase() === "content-disposition" ? 'attachment; filename="my_match.dem"' : null),
+      },
+      blob: vi.fn().mockResolvedValue(mockBlob),
+    });
+
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const createObjectURL = vi.fn().mockReturnValue("blob:http://localhost/demo-uuid");
+    const revokeObjectURL = vi.fn();
+    window.URL.createObjectURL = createObjectURL;
+    window.URL.revokeObjectURL = revokeObjectURL;
+
+    render(
+      <CosmeticsView
+        demoId="demo-123"
+        selectedPlayer={{ name: "JW", steamid: STEAM_ID }}
+        workspace={{ cosmetics: { players: { [STEAM_ID]: [] } } }}
+      />,
+    );
+
+    const exportBtn = screen.getByTestId("cosmetics-export-demo");
+    expect(exportBtn).toBeTruthy();
+
+    fireEvent.click(exportBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/demos/demo-123/export-demo");
+      expect(createObjectURL).toHaveBeenCalledWith(mockBlob);
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    clickSpy.mockRestore();
+    global.fetch = originalFetch;
+  });
+
+  test("strips historical CS2 INSIGHT AGENT watermark so skin shows official name", () => {
+    render(
+      <CosmeticsView
+        demoId="demo-123"
+        locale="zh"
+        selectedPlayer={{ name: "JW", steamid: STEAM_ID }}
+        workspace={{
+          cosmetics: {
+            players: {
+              [STEAM_ID]: [
+                cosmetic({
+                  custom_name: "CS2 INSIGHT AGENT",
+                }),
+              ],
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("CS2 INSIGHT AGENT")).toBeNull();
+    expect(screen.getAllByText(/M9/).length).toBeGreaterThan(0);
+  });
 });

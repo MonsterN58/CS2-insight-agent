@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..api_errors import error_detail
@@ -521,3 +522,27 @@ async def post_custom_skin_plan(
             _cleanup_temp(path)
         if not replaced:
             _cleanup_temp(temp_out)
+
+
+@router.get("/api/demos/{demo_id}/export-demo")
+async def export_modified_demo(demo_id: int):
+    row = await demo_db.get_demo_by_id(int(demo_id))
+    if not row:
+        raise HTTPException(404, f"Demo not found: {demo_id}")
+    try:
+        cached_path = await ensure_row_cached(demo_db, row)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+    if not cached_path.is_file():
+        raise HTTPException(404, f"Demo file not found on disk: {cached_path}")
+
+    orig_name = Path(str(row.get("path") or "")).name or f"demo_{demo_id}.dem"
+    if not orig_name.endswith(".dem"):
+        orig_name = f"{orig_name}.dem"
+
+    return FileResponse(
+        path=str(cached_path),
+        media_type="application/octet-stream",
+        filename=orig_name,
+    )

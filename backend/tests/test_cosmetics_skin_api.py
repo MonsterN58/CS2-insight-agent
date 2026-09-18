@@ -940,3 +940,33 @@ def test_post_falls_back_to_one_shot_compat_when_baseline_cache_fails(
     assert response.status_code == 200
     assert order == ["baseline-failed", "fallback-compat", "rewrite"]
     assert seen_input is not None and not seen_input.exists()
+
+
+def test_export_demo_success(api_env):
+    client = api_env["client"]
+    demo_id = api_env["demo_id"]
+    response = client.get(f"/api/demos/{demo_id}/export-demo")
+    assert response.status_code == 200
+    assert response.content == b"CACHED-DEMO"
+    assert "attachment" in response.headers.get("content-disposition", "")
+    assert 'filename="match.dem"' in response.headers.get("content-disposition", "")
+
+
+def test_export_demo_404_when_not_found(api_env):
+    client = api_env["client"]
+    response = client.get("/api/demos/9999999/export-demo")
+    assert response.status_code == 404
+    assert "Demo not found: 9999999" in response.json()["detail"]
+
+
+def test_export_demo_404_when_file_missing(api_env, tmp_path):
+    client = api_env["client"]
+    demo_id = api_env["demo_id"]
+    cached_file = tmp_path / "cache" / "match-cached.dem"
+    orig_file = tmp_path / "library" / "match.dem"
+    if cached_file.exists():
+        cached_file.unlink()
+    if orig_file.exists():
+        orig_file.unlink()
+    response = client.get(f"/api/demos/{demo_id}/export-demo")
+    assert response.status_code == 404

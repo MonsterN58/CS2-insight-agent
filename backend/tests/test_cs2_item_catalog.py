@@ -1393,3 +1393,15 @@ def test_direct_drop_never_active_uses_purchase_side_only_for_unique_asset(asset
         assert len(awps) == asset_count
         assert all(row['observed_teams'] == (['ct'] if asset_count == 1 else []) for row in awps)
         assert all(row['ownership_evidence'] == 'demo_skin_table' for row in awps)
+
+
+def test_custom_name_strips_rewriter_watermark_and_preserves_custom():
+    from app.features.demo_analysis.cs2_item_catalog import _custom_name
+    assert _custom_name("CS2 INSIGHT AGENT") == ""
+    assert _custom_name("cs2 insight agent") == ""
+    assert _custom_name("  CS2-INSIGHT-AGENT  ") == ""
+    assert _custom_name("CS2-insight-agent") == ""
+    assert _custom_name("My Special AK-47") == "My Special AK-47"
+    assert _custom_name("") == ""
+    assert _custom_name(None) == ""
+    assert _custom_name(123) == "123"

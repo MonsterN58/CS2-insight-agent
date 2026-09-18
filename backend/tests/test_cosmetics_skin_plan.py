@@ -877,3 +877,57 @@ def test_map_item_statuses_includes_original_and_replacement_names():
     assert mapped[0]["replacement_name_zh"] == "AK-47 | 红线"
     assert mapped[0]["replacement_name_en"] == "AK-47 | Redline"
     assert mapped[0]["name_zh"] == "AK-47 | 红线"
+
+
+def test_build_batch_and_plan_preserves_user_custom_name():
+    inv = [
+        inventory_row(
+            item_id=10,
+            type="weapon",
+            def_index=7,
+            paint_index=0,
+            model="ak47",
+            name_zh="AK原皮",
+            name_en="AK Stock",
+        )
+    ]
+    replacements = {
+        "id:10": replacement(
+            type="weapon",
+            def_index=7,
+            paint_index=340,
+            name_zh="AK-47 | 红线",
+            name_en="AK-47 | Redline",
+            custom_name="One Tap Machine",
+        )
+    }
+    batch_items, plan = build_batch_and_plan(STEAM_ID, inv, replacements)
+    assert batch_items[0]["custom_name"] == "One Tap Machine"
+    assert plan["items"][0]["replacement"]["custom_name"] == "One Tap Machine"
+
+
+def test_build_batch_and_plan_empty_custom_name_sets_empty():
+    inv = [
+        inventory_row(
+            item_id=10,
+            type="weapon",
+            def_index=7,
+            paint_index=0,
+            model="ak47",
+            name_zh="AK原皮",
+            name_en="AK Stock",
+        )
+    ]
+    replacements = {
+        "id:10": replacement(
+            type="weapon",
+            def_index=7,
+            paint_index=340,
+            name_zh="AK-47 | 红线",
+            name_en="AK-47 | Redline",
+            custom_name="   ",
+        )
+    }
+    batch_items, plan = build_batch_and_plan(STEAM_ID, inv, replacements)
+    assert batch_items[0]["custom_name"] == ""
+    assert plan["items"][0]["replacement"]["custom_name"] == ""
